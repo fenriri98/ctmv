@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Customizable Metaverse - โรงเรียนโพนงามพิทยาคาร</title>
+    <link rel="icon" href="https://cdn.glitch.global/66e6725f-f911-4ca8-8489-9a044783650e/running.png?v=1748756958688" type="image/png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Sarabun', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            touch-action: none;
+        }
+        #gameContainer { position: relative; width: 100vw; height: 100vh; }
+        #lobbyScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 1000; color: white; text-align: center;
+        }
+        #lobbyScreen h1 { font-size: 3em; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .lobby-form {
+            background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);
+            max-width: 400px; width: 90%;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input {
+            width: 100%; padding: 10px; border: none; border-radius: 5px; font-size: 16px;
+            background-color: rgba(255,255,255,0.2); color: white;
+        }
+        .form-group input::placeholder { color: rgba(255,255,255,0.7); }
+        .color-picker { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; justify-content: center; }
+        .color-option {
+            width: 35px; height: 35px; border-radius: 50%; cursor: pointer;
+            border: 3px solid transparent; transition: transform 0.2s, border-color 0.2s;
+        }
+        .color-option:hover { transform: scale(1.1); }
+        .color-option.selected { border-color: white; transform: scale(1.15); }
+        #startBtn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52); color: white; border: none;
+            padding: 15px 30px; font-size: 18px; border-radius: 25px; cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s; margin-top: 20px; font-weight: bold;
+        }
+        #startBtn:hover { transform: scale(1.05); box-shadow: 0px 5px 15px rgba(0,0,0,0.2); }
+        #gameUI {
+            position: absolute; top: 15px; right: 15px; color: white; z-index: 100;
+            background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 10px;
+            backdrop-filter: blur(8px); font-size: 14px;
+        }
+        #gameUI div { margin-bottom: 5px; }
+        #chatBox {
+            position: absolute; bottom: 70px; left: 15px; width: 350px; height: 120px;
+            background: rgba(0,0,0,0.75); border-radius: 8px; padding: 10px; color: white;
+            z-index: 100; overflow-y: auto; display: block; font-size: 13px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.3);
+        }
+        #chatInput {
+            position: absolute; bottom: 20px; left: 15px; width: 350px; padding: 10px;
+            border: none; border-radius: 8px; font-size: 14px; z-index: 100; display: none;
+            background-color: rgba(255,255,255,0.2); color: white;
+        }
+        #chatInput::placeholder { color: rgba(255,255,255,0.7); }
+        #mobileControls { position: absolute; bottom: 20px; width: 100%; display: none; z-index: 100; pointer-events: none; }
+        #joystick {
+            position: absolute; bottom: 70px; right: 40px; width: 100px; height: 100px;
+            background: rgba(255,255,255,0.15); border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.25); pointer-events: auto;
+        }
+        #joystickKnob {
+            width: 35px; height: 35px; background: rgba(255,255,255,0.7); border-radius: 50%;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            transition: transform 0.05s;
+        }
+        #jumpBtn {
+            position: absolute; bottom: 70px; left: 40px; width: 70px; height: 70px;
+            background: rgba(255,100,100,0.6); border: 2px solid rgba(255,255,255,0.25);
+            border-radius: 50%; color: white; font-size: 16px; font-weight: bold;
+            display: flex; justify-content: center; align-items: center;
+            user-select: none; pointer-events: auto;
+        }
+        #jumpBtn:active { background: rgba(255,80,80,0.8); transform: scale(0.95); }
+        #chatToggleBtn {
+            position: absolute;
+            bottom: 50px;
+            left: 100px;
+            width: 60px;
+            height: 60px;
+            background: rgba(100, 149, 237, 0.7);
+            border: 2px solid rgba(255,255,255,0.25);
+            border-radius: 50%;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            pointer-events: auto;
+            z-index: 100;
+        }
+        #chatToggleBtn:active {
+            background: rgba(100, 149, 237, 0.9);
+            transform: scale(0.95);
+        }
+
+        .npc-dialog {
+            position: absolute; background: rgba(0,0,0,0.85); color: white; padding: 15px;
+            border-radius: 8px; max-width: 280px; z-index: 200; display: none;
+            font-size: 13px; box-shadow: 0px 5px 15px rgba(0,0,0,0.3); text-align: left;
+        }
+        #speakToNpcBtn {
+             margin-right: 10px;
+        }
+        #speakToNpcBtn:disabled {
+            background-color: #555 !important;
+            cursor: not-allowed;
+        }
+        @media (max-width: 768px) {
+            #mobileControls { display: block !important; }
+            #gameUI { font-size: 11px; padding: 8px 12px; top:10px; right:10px;}
+            #chatBox { width: calc(100% - 30px); height: 90px; bottom: 215px; left:15px; padding: 8px;}
+            #chatInput { width: calc(100% - 30px); bottom: 25px; left:15px; padding: 8px; font-size: 13px;}
+            #joystick { width: 90px; height: 90px; bottom: 50px; right: 25px;}
+            #joystickKnob { width: 30px; height: 30px;}
+            #jumpBtn { width: 60px; height: 60px; bottom: 50px; left: 25px; font-size: 14px;}
+            #chatToggleBtn { bottom: 120px; left: 25px; }
+            #lobbyScreen h1 { font-size: 2.2em; margin-bottom: 20px; }
+            .lobby-form { padding: 20px; }
+            .form-group input { font-size: 15px; }
+            #startBtn { font-size: 17px; padding: 12px 25px; }
+            .npc-dialog { max-width: calc(100% - 40px); font-size: 12px; }
+        }
+        .position-data {
+            display: none;
+        }
+        .credit {
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+        .credit a {
+            font-weight: bold;
+            color: #334c8c;
+            text-decoration: none;
+            background-color: #f0f0f0;
+            padding: 4px 20px 0 5px;
+            display: inline-block;
+            border-radius: 25px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="lobbyScreen">
+            <h1>Customizable Metaverse</h1>
+            <div class="lobby-form">
+                <div class="form-group">
+                    <label for="playerName">Your Name:</label>
+                    <input type="text" id="playerName" placeholder="Enter your name..." maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label>Character Color:</label>
+                    <div class="color-picker">
+                        <div class="color-option selected" style="background: #ff6b6b" data-color="#ff6b6b" title="Red"></div>
+                        <div class="color-option" style="background: #4ecdc4" data-color="#4ecdc4" title="Mint Green"></div>
+                        <div class="color-option" style="background: #45b7d1" data-color="#45b7d1" title="Blue"></div>
+                        <div class="color-option" style="background: #feca57" data-color="#feca57" title="Yellow"></div>
+                        <div class="color-option" style="background: #6c5ce7" data-color="#6c5ce7" title="Purple"></div>
+                        <div class="color-option" style="background: #a29bfe" data-color="#a29bfe" title="Light Purple"></div>
+                    </div>
+                </div>
+                 <div class="form-group">
+                    <label>Hair Color:</label>
+                    <div class="color-picker" id="hairColorPicker">
+                        <div class="color-option selected" style="background: #4A3B31" data-color="#4A3B31" title="Dark Brown"></div>
+                        <div class="color-option" style="background: #000000" data-color="#000000" title="Black"></div>
+                        <div class="color-option" style="background: #D2B48C" data-color="#D2B48C" title="Blonde"></div>
+                        <div class="color-option" style="background: #A0522D" data-color="#A0522D" title="Red Brown"></div>
+                        <div class="color-option" style="background: #FF69B4" data-color="#FF69B4" title="Pink"></div>
+                        <div class="color-option" style="background: #40E0D0" data-color="#40E0D0" title="Turquoise"></div>
+                    </div>
+                </div>
+                <button id="startBtn">Enter Metaverse! 🚀</button>
+            </div>
+            <small class="credit">พัฒนาโดย <a href="https://www.facebook.com/Chotiros.Sangiamsak"><img src="https://cdn.glitch.global/66e6725f-f911-4ca8-8489-9a044783650e/facebook.png?v=1748757677704" alt="Facebook logo" width="26" style="vertical-align: middle; margin-bottom: 4px; margin-right: 4px;">
+ นายโชติรส เสงี่ยมศักดิ์ </a><p style="margin-top: 10px;">ครูผู้ช่วย โรงเรียนโพนงามพิทยาคาร<br>สังกัดสำนักงานเขตพื้นที่การศึกษามัธยมศึกษาศรีสะเกษ ยโสธร</p></small>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="gameUI">
+            <div>Players Online: <span id="playerCount">0</span></div>
+            <div class="">Position: <span id="position">0, 0, 0</span></div>
+        </div>
+        <div id="chatBox"></div>
+        <input type="text" id="chatInput" placeholder="Type message... (Enter to send)" maxlength="100">
+        <div id="mobileControls">
+            <button id="jumpBtn">Jump</button>
+            <div id="joystick">
+                <div id="joystickKnob"></div>
+            </div>
+            <button id="chatToggleBtn">💬</button>
+        </div>
+        <div id="npcDialog" class="npc-dialog">
+            <div id="npcNameText" style="font-weight: bold; margin-bottom: 5px;"></div>
+            <div id="npcDialogueText"></div>
+            <button id="speakToNpcBtn" style="margin-top: 10px; padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; display: none;">🎤 Speak</button>
+            <button id="npcCloseBtn" style="margin-top: 10px; padding: 5px 10px; background: #555; color: white; border: none; border-radius: 3px; cursor: pointer;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let scene, camera, renderer, world;
+        let socket; // WebSocket object
+        let player, localPlayerId, players = {};
+        let npcs = [];
+        let serverNpcDataStore = [];
+        let keys = {};
+        let isJumpingState = false;
+        let currentAnimation = 'idle';
+
+        let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        let joystickActive = false;
+        let joystickDirection = { x: 0, y: 0 };
+
+        let currentOpenNPCDialogId = null;
+        let lastNPCInteractionTime = 0;
+        const NPC_INTERACTION_COOLDOWN_MS = 2000;
+
+        const footOffsetYCorrection = 0.8;
+
+        const playerConfig = {
+            name: '',
+            color: '#ff6b6b',
+            hairColor: '#4A3B31'
+        };
+
+        let lastUpdateTime = 0;
+        const updateInterval = 100;
+        let clock = new THREE.Clock();
+        let lastNpcDialogueText = '';
+
+        // Speech API variables
+        let speechRecognition;
+        let speechSynthesis = window.speechSynthesis;
+        let isRecognizing = false;
+        let npcVoiceEnabled = true;
+        
+        let englishVoices = [];
+        let preferredMaleEnglishVoices = [];
+        let preferredFemaleEnglishVoices = [];
+        let otherEnglishVoices = [];
+
+
+        function init() {
+            setupLobby();
+        }
+
+        function setupLobby() {
+            const bodyColorOptions = document.querySelectorAll('.color-picker:not(#hairColorPicker) .color-option');
+            bodyColorOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    bodyColorOptions.forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    playerConfig.color = option.dataset.color;
+                });
+            });
+
+            const hairColorOptions = document.querySelectorAll('#hairColorPicker .color-option');
+            hairColorOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    hairColorOptions.forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    playerConfig.hairColor = option.dataset.color;
+                });
+            });
+
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            document.getElementById('playerName').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') startGame();
+            });
+        }
+
+        function startGame() {
+            const nameInput = document.getElementById('playerName');
+            playerConfig.name = nameInput.value.trim();
+
+            if (!playerConfig.name) {
+                alert('Please enter your name.');
+                return;
+            }
+            if (playerConfig.name.length > 20) {
+                 playerConfig.name = playerConfig.name.substring(0,20);
+            }
+
+            document.getElementById('lobbyScreen').style.display = 'none';
+            if(isMobile) {
+                document.getElementById('mobileControls').style.display = 'block';
+                document.getElementById('chatInput').style.bottom = '25px';
+                document.getElementById('chatToggleBtn').style.bottom = '120px';
+                document.getElementById('chatToggleBtn').style.left = '25px';
+            }
+
+            initGame();
+            setupWebSocket();
+        }
+
+        function initializeSpeechRecognition() {
+            if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+                const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+                speechRecognition = new SpeechRecognitionAPI();
+                speechRecognition.continuous = false;
+                speechRecognition.lang = 'en-US';
+                speechRecognition.interimResults = false;
+                speechRecognition.maxAlternatives = 1;
+
+                speechRecognition.onresult = (event) => {
+                    const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                    console.log('You said: ', transcript);
+                    if (transcript && currentOpenNPCDialogId && socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'npcUserSpeech',
+                            payload: {
+                                npcId: currentOpenNPCDialogId,
+                                text: transcript
+                            }
+                        }));
+                    }
+                    document.getElementById('speakToNpcBtn').textContent = '🎤 Speak';
+                    document.getElementById('speakToNpcBtn').disabled = false;
+                    isRecognizing = false;
+                };
+
+                speechRecognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    let errorMessage = 'Speech recognition error occurred.';
+                    if (event.error === 'no-speech') errorMessage = 'No speech detected. Please try again.';
+                    else if (event.error === 'audio-capture') errorMessage = 'Could not access microphone.';
+                    else if (event.error === 'not-allowed') errorMessage = 'Microphone access denied.';
+                    addChatMessage('System', errorMessage);
+                    document.getElementById('speakToNpcBtn').textContent = '🎤 Speak';
+                    document.getElementById('speakToNpcBtn').disabled = false;
+                    isRecognizing = false;
+                };
+
+                speechRecognition.onstart = () => {
+                    isRecognizing = true;
+                    document.getElementById('speakToNpcBtn').textContent = 'Listening...';
+                    document.getElementById('speakToNpcBtn').disabled = true;
+                };
+
+                speechRecognition.onend = () => {
+                    if (isRecognizing) { 
+                        document.getElementById('speakToNpcBtn').textContent = '🎤 Speak';
+                        document.getElementById('speakToNpcBtn').disabled = false;
+                        isRecognizing = false;
+                    }
+                };
+            } else {
+                console.warn('Speech Recognition API not supported in this browser.');
+                const speakBtn = document.getElementById('speakToNpcBtn');
+                if(speakBtn) speakBtn.style.display = 'none';
+            }
+        }
+        
+        function simpleHashCode(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash |= 0; // Convert to 32bit integer
+            }
+            return Math.abs(hash);
+        }
+
+        function loadVoices() {
+            if (!speechSynthesis) return;
+            
+            allVoices = speechSynthesis.getVoices();
+            englishVoices = allVoices.filter(voice => voice.lang.startsWith('en-'));
+
+            preferredMaleEnglishVoices = englishVoices.filter(voice => {
+                const name = voice.name.toLowerCase();
+                return name.includes("david") || name.includes("mark") || name.includes("tom") || name.includes("alex") || (name.includes("google") && name.includes("male")) || (name.includes("microsoft") && name.includes("male"));
+            });
+             if (preferredMaleEnglishVoices.length === 0) {
+                preferredMaleEnglishVoices = englishVoices.filter(voice => voice.name.toLowerCase().includes("male"));
+            }
+
+
+            preferredFemaleEnglishVoices = englishVoices.filter(voice => {
+                const name = voice.name.toLowerCase();
+                return name.includes("zira") || name.includes("susan") || name.includes("linda") || name.includes("samantha") || name.includes("eva") || (name.includes("google") && name.includes("female")) || (name.includes("microsoft") && name.includes("female"));
+            });
+            if (preferredFemaleEnglishVoices.length === 0) {
+                preferredFemaleEnglishVoices = englishVoices.filter(voice => voice.name.toLowerCase().includes("female"));
+            }
+            
+
+            otherEnglishVoices = englishVoices.filter(voice => 
+                !preferredMaleEnglishVoices.includes(voice) && 
+                !preferredFemaleEnglishVoices.includes(voice)
+            );
+
+            console.log("All English voices:", englishVoices.map(v=>v.name));
+            console.log("Preferred Male English voices:", preferredMaleEnglishVoices.map(v=>v.name));
+            console.log("Preferred Female English voices:", preferredFemaleEnglishVoices.map(v=>v.name));
+            console.log("Other English voices:", otherEnglishVoices.map(v=>v.name));
+
+            if (englishVoices.length === 0) {
+                 console.warn("No English voices found for speech synthesis. Will use browser default for English.");
+            }
+        }
+
+
+        function setupWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            socket = new WebSocket(wsUrl);
+            socket.onopen = () => {
+                console.log('Connected to WebSocket Server');
+                if (player) {
+                     socket.send(JSON.stringify({
+                        type: 'playerJoin',
+                        payload: {
+                            name: playerConfig.name,
+                            color: playerConfig.color,
+                            hairColor: playerConfig.hairColor,
+                            position: player.position.clone(),
+                            rotation: {x:0, y: player.rotation.y, z:0 },
+                            animationState: 'idle'
+                        }
+                    }));
+                } else {
+                    console.error("Player object not initialized before sending playerJoin");
+                }
+            };
+            socket.onmessage = (event) => {
+                let data;
+                try { data = JSON.parse(event.data); } catch (e) { console.error("Invalid JSON received:", event.data); return; }
+                switch (data.type) {
+                    case 'initialState':
+                        serverNpcDataStore = data.payload.npcs || [];
+                        createNPCsFromServerData();
+                        if(data.payload.chatHistory && Array.isArray(data.payload.chatHistory)){
+                            data.payload.chatHistory.forEach(msg => addChatMessage(msg.type === 'system' ? 'System' : msg.playerName, msg.message));
+                        }
+                        break;
+                    case 'joinConfirmation': localPlayerId = data.payload.playerId; console.log("Joined successfully! My ID:", localPlayerId); break;
+                    case 'currentPlayers': data.payload.forEach(pData => { if (pData.id !== localPlayerId) { addOtherPlayer(pData); } }); break;
+                    case 'playerJoined': if (data.payload.id !== localPlayerId) { addOtherPlayer(data.payload); } break;
+                    case 'playerMoved':
+                        if (data.payload.id === localPlayerId) return;
+                        const otherPlayer = players[data.payload.id];
+                        if (otherPlayer) {
+                            otherPlayer.userData.targetPosition = new THREE.Vector3(data.payload.position.x, data.payload.position.y, data.payload.position.z);
+                            otherPlayer.userData.targetRotationY = data.payload.rotation.y;
+                            otherPlayer.userData.animationState = data.payload.animationState || 'idle';
+                        }
+                        break;
+                    case 'playerAction':
+                        if (data.payload.playerId === localPlayerId) return;
+                        const actionPlayer = players[data.payload.playerId];
+                        if(actionPlayer && data.payload.action === 'jump') { actionPlayer.userData.jumpStartTime = Date.now(); }
+                        break;
+                    case 'chatMessage': addChatMessage(data.payload.type === 'system' ? 'System' : data.payload.playerName, data.payload.message); break;
+                    case 'npcDialogue': 
+                        const isNewNpc = currentOpenNPCDialogId !== data.payload.npcId;
+                        const isNewText = data.payload.dialogue !== lastNpcDialogueText;
+                        const isHidden = document.getElementById('npcDialog').style.display === 'none';
+                        if (isNewNpc || isNewText || isHidden) { 
+                            lastNpcDialogueText = data.payload.dialogue;
+                            showNPCDialogContent(data.payload.npcId, data.payload.npcName, data.payload.dialogue, data.payload.npcVoiceGender);
+                        }
+                        break;
+                    case 'playerCount': document.getElementById('playerCount').textContent = data.payload; break;
+                    case 'error': console.error('Server error:', data.payload.message); alert(`Server error: ${data.payload.message}`); break;
+                    default: console.warn("Received unknown message type:", data.type);
+                }
+            };
+            socket.onclose = (event) => {
+                console.log('Disconnected from WebSocket Server:', event.code, event.reason);
+                alert('Disconnected from server! (Code: ' + event.code + (event.reason ? ', Reason: ' + event.reason : '') + ')');
+                document.getElementById('lobbyScreen').style.display = 'flex';
+                for (const id in players) { removeOtherPlayer(id); }
+                npcs.forEach(npc => scene.remove(npc)); npcs = [];
+                if(player) scene.remove(player); player = null;
+                localPlayerId = null; currentOpenNPCDialogId = null; socket = null;
+            };
+            socket.onerror = (error) => { console.error('WebSocket Error:', error); };
+        }
+
+        function initGame() {
+            setupScene();
+            createWorld();
+            createPlayer();
+            setupControls();
+            setupUI();
+            initializeSpeechRecognition(); 
+            if (speechSynthesis) { 
+                if (speechSynthesis.onvoiceschanged !== undefined) {
+                    speechSynthesis.onvoiceschanged = loadVoices;
+                }
+                loadVoices(); 
+            }
+            animate();
+        }
+        
+        function setupScene() { scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); scene.fog = new THREE.Fog(0x87CEEB, 60, 250); camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true }); renderer.setPixelRatio(window.devicePixelRatio); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); scene.add(ambientLight); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9); directionalLight.position.set(80, 120, 60); directionalLight.castShadow = true; directionalLight.shadow.mapSize.width = 2048; directionalLight.shadow.mapSize.height = 2048; directionalLight.shadow.camera.near = 0.5; directionalLight.shadow.camera.far = 300; directionalLight.shadow.camera.left = -120; directionalLight.shadow.camera.right = 120; directionalLight.shadow.camera.top = 120; directionalLight.shadow.camera.bottom = -120; scene.add(directionalLight); }
+        function createPath(x, z, width, length, rotationY = 0, color = 0xAAAAAA) { const pathHeight = 0.05; const geometry = new THREE.BoxGeometry(width, pathHeight, length); const material = new THREE.MeshLambertMaterial({ color }); const path = new THREE.Mesh(geometry, material); path.position.set(x, pathHeight / 2, z); path.rotation.y = rotationY; path.receiveShadow = true; path.userData = { type: 'path', isCollidable: false, isStandable: true, topY: pathHeight }; world.add(path); }
+        function createBench(x, z, rotationY = 0, scale = 3) { const benchGroup = new THREE.Group(); const benchWorldY = 0; const seatBaseY = 0.4 * scale; const seatThickness = 0.15 * scale; const seatDepth = 0.5 * scale; const seatWidth = 2 * scale; const legRadius = 0.08 * scale; const backrestHeight = 0.6 * scale; const backrestThickness = 0.1 * scale; const woodMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 }); const seatTopY = benchWorldY + seatBaseY + seatThickness; const seatGeometry = new THREE.BoxGeometry(seatWidth, seatThickness, seatDepth); const seat = new THREE.Mesh(seatGeometry, woodMaterial); seat.position.y = seatBaseY + seatThickness / 2; seat.castShadow = true; seat.receiveShadow = true; seat.userData = { type: 'bench_seat', isCollidable: true, isStandable: true, topY: seatTopY }; benchGroup.add(seat); const backrestGeometry = new THREE.BoxGeometry(seatWidth, backrestHeight, backrestThickness); const backrest = new THREE.Mesh(backrestGeometry, woodMaterial); backrest.position.y = seat.position.y + seatThickness/2 + backrestHeight / 2 - (0.1 * scale); backrest.position.z = -seatDepth / 2 + backrestThickness / 2; backrest.rotation.x = Math.PI / 18; backrest.castShadow = true; backrest.userData = { type: 'bench_backrest', isCollidable: true }; benchGroup.add(backrest); const legPositions = [ { x: -seatWidth / 2 + legRadius*1.5, z: -seatDepth / 2 + legRadius*1.5 }, { x:  seatWidth / 2 - legRadius*1.5, z: -seatDepth / 2 + legRadius*1.5 }, { x: -seatWidth / 2 + legRadius*1.5, z:  seatDepth / 2 - legRadius*1.5 }, { x:  seatWidth / 2 - legRadius*1.5, z:  seatDepth / 2 - legRadius*1.5 }, ]; legPositions.forEach(pos => { const legGeometry = new THREE.CylinderGeometry(legRadius, legRadius, seatBaseY, 8); const leg = new THREE.Mesh(legGeometry, woodMaterial); leg.position.set(pos.x, seatBaseY / 2, pos.z); leg.castShadow = true; leg.userData = { type: 'bench_leg', isCollidable: true }; benchGroup.add(leg); }); benchGroup.position.set(x, benchWorldY, z); benchGroup.rotation.y = rotationY; benchGroup.userData = { type: 'bench_structure', isCollidable: true, isStandable: false }; world.add(benchGroup); }
+        function createFlowerBed(x, z, bedWidth = 2, bedDepth = 1, flowerCount = 10) { const flowerBedGroup = new THREE.Group(); const bedBaseY = 0; const bedHeight = 0.2; const soilColor = 0x5C4033; const flowerColors = [0xff6b6b, 0xfeca57, 0x4ecdc4, 0x6c5ce7, 0xff9ff3]; const bedGeometry = new THREE.BoxGeometry(bedWidth, bedHeight, bedDepth); const bedMaterial = new THREE.MeshLambertMaterial({ color: soilColor }); const bedBase = new THREE.Mesh(bedGeometry, bedMaterial); bedBase.position.y = bedHeight / 2; bedBase.castShadow = true; bedBase.receiveShadow = true; bedBase.userData = { type: 'flowerbed_base', isCollidable: true, isStandable: false, topY: bedBaseY + bedHeight }; flowerBedGroup.add(bedBase); const flowerRadius = 0.1; for (let i = 0; i < flowerCount; i++) { const flowerGeo = new THREE.SphereGeometry(flowerRadius, 8, 6); const flowerMat = new THREE.MeshLambertMaterial({ color: flowerColors[Math.floor(Math.random() * flowerColors.length)] }); const flower = new THREE.Mesh(flowerGeo, flowerMat); const randX = (Math.random() - 0.5) * (bedWidth - flowerRadius * 3); const randZ = (Math.random() - 0.5) * (bedDepth - flowerRadius * 3); const randYOffset = (Math.random() * 0.05); flower.position.set(randX, bedHeight + flowerRadius + randYOffset, randZ); flower.castShadow = true; flower.userData = { type: 'flower', isCollidable: false }; flowerBedGroup.add(flower); } flowerBedGroup.position.set(x, bedBaseY, z); world.add(flowerBedGroup); }
+        function createRock(x, z, minSize = 0.4, maxSize = 1.2) { const size = THREE.MathUtils.randFloat(minSize, maxSize); const rockBaseY = 0; const rockGeometry = new THREE.IcosahedronGeometry(size / 2, Math.random() > 0.5 ? 0 : 1); const rockMaterial = new THREE.MeshLambertMaterial({ color: new THREE.Color(0x708090).lerp(new THREE.Color(0x506070), Math.random()) }); const rock = new THREE.Mesh(rockGeometry, rockMaterial); const rockTopY = rockBaseY + size - (size*0.1); rock.position.set(x, rockBaseY + size / 2 - (size*0.1), z); rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI); rock.castShadow = true; rock.receiveShadow = true; rock.userData = { type: 'rock', isCollidable: true, isStandable: size > 0.8, topY: rockTopY }; world.add(rock); }
+        function createBush(x, y, z, radius = 1.5, color = 0x2E8B57 ) { const bushGeometry = new THREE.SphereGeometry(radius, 12, 8); const bushMaterial = new THREE.MeshLambertMaterial({ color }); const bush = new THREE.Mesh(bushGeometry, bushMaterial); bush.position.set(x, y + radius * 0.6, z); bush.castShadow = true; bush.userData = { type: 'bush', isCollidable: true, isStandable: false }; world.add(bush); }
+        function createTree(x, y, z, scale = 1) { const trunkHeight = 4.5 * scale; const trunkRadiusTop = 0.6 * scale; const trunkRadiusBottom = 0.9 * scale; const trunkGeo = new THREE.CylinderGeometry(trunkRadiusTop, trunkRadiusBottom, trunkHeight, 8); const trunkMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 }); const trunk = new THREE.Mesh(trunkGeo, trunkMat); trunk.position.set(x, y + trunkHeight/2, z); trunk.castShadow = true; trunk.userData = { type: 'tree_trunk', isCollidable: true }; world.add(trunk); const leavesRadius = 3.5 * scale; const leavesGeo = new THREE.SphereGeometry(leavesRadius, 10, 8); const leavesMat = new THREE.MeshLambertMaterial({ color: 0x228B22 }); const leaves = new THREE.Mesh(leavesGeo, leavesMat); leaves.position.set(x, y + trunkHeight + leavesRadius * 0.7 , z); leaves.castShadow = true; leaves.userData = { type: 'tree_leaves', isCollidable: false }; world.add(leaves); }
+        function createBuilding(x, y, z, width, height, depth, color) { const geometry = new THREE.BoxGeometry(width, height, depth); const material = new THREE.MeshLambertMaterial({ color }); const building = new THREE.Mesh(geometry, material); building.position.set(x, y + height/2, z); building.castShadow = true; building.receiveShadow = true; building.userData = { type: 'building', isCollidable: true, isStandable: true, topY: y + height }; world.add(building); }
+        function createPlatform(x, ySurface, z, width, height, depth, color, isFloating = false) { const geometry = new THREE.BoxGeometry(width, height, depth); const material = new THREE.MeshLambertMaterial({ color }); const platform = new THREE.Mesh(geometry, material); platform.position.set(x, ySurface - height / 2, z); platform.castShadow = true; platform.receiveShadow = true; platform.userData = { type: 'platform', isCollidable: true, isStandable: true, topY: ySurface }; if (isFloating) { platform.userData.isFloating = true; } world.add(platform); }
+        function createStatue(x,y,z) { const baseHeight = 1.2; const baseGeo = new THREE.CylinderGeometry(2.5, 2.5, baseHeight, 12); const baseMat = new THREE.MeshLambertMaterial({ color: 0x708090 }); const base = new THREE.Mesh(baseGeo, baseMat); base.position.set(x, y + baseHeight/2, z); base.castShadow = true; base.receiveShadow = true; base.userData = { type: 'statue_base', isCollidable: true, isStandable: true, topY: y + baseHeight }; world.add(base); const statueBodyGeo = new THREE.IcosahedronGeometry(1.2, 0); const statueMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.3, roughness: 0.6 }); const statueBody = new THREE.Mesh(statueBodyGeo, statueMat); statueBody.position.set(x, y + baseHeight + 1.2, z); statueBody.castShadow = true; statueBody.userData = { type: 'statue_body', isCollidable: true }; world.add(statueBody); }
+        function createFountain(x,y,z) { const baseRadius = 4.5; const baseHeight = 1.2; const baseGeo = new THREE.CylinderGeometry(baseRadius, baseRadius, baseHeight, 24); const baseMat = new THREE.MeshLambertMaterial({ color: 0x5F9EA0 }); const base = new THREE.Mesh(baseGeo, baseMat); base.position.set(x, y + baseHeight/2, z); base.castShadow = true; base.receiveShadow = true; base.userData = { type: 'fountain_base', isCollidable: true, isStandable: true, topY: y + baseHeight }; world.add(base); const waterRadius = baseRadius * 0.85; const waterHeight = 0.25; const waterGeo = new THREE.CylinderGeometry(waterRadius, waterRadius, waterHeight, 24); const waterMat = new THREE.MeshPhongMaterial({ color: 0xADD8E6, transparent: true, opacity: 0.75, shininess: 80 }); const water = new THREE.Mesh(waterGeo, waterMat); water.position.set(x, y + baseHeight - waterHeight/2 + 0.01, z); water.receiveShadow = true; water.userData = { type: 'fountain_water', isCollidable: false, isStandable: false }; world.add(water); }
+        function createWorld() { world = new THREE.Group(); scene.add(world); const groundSize = 250; const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize); const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x90EE90 }); const ground = new THREE.Mesh(groundGeometry, groundMaterial); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; world.add(ground); createBuilding(-25, 0, -25, 10, 18, 10, 0xCD853F); createBuilding(30, 0, -20, 8, 22, 8, 0xB0C4DE); createBuilding(-20, 0, 35, 12, 15, 12, 0x20B2AA); createBuilding(25, 0, 30, 7, 20, 7, 0xDB7093); createBuilding(60, 0, 60, 15, 25, 15, 0xA0522D); createBuilding(-60, 0, -50, 12, 20, 20, 0x4682B4); createStatue(0, 0, 0); createFountain(-10, 0, -30); const pathColor = 0xBCB8B1; createPath(0, -12.5, 3.5, 25, 0, pathColor); createPath(15, 0, 30, 3.5, Math.PI/2, pathColor); createPath(-15, 0, 30, 3.5, Math.PI/2, pathColor); createPath(0, 20, 3.5, 40, 0, pathColor); createPath(-12.5, -25, 25, 2.5, 0, pathColor); createPath(10, -20, 40, 2.5, Math.PI/2, pathColor); createPath(-2.5, 35, 35, 2.5, 0, pathColor); createPath(12.5, 30, 25, 2.5, Math.PI/2, pathColor); createPath(0, 55, 100, 3, 0, pathColor); createPath(0, -55, 100, 3, 0, pathColor); createPath(50, 0, 3, 110, Math.PI/2, pathColor); createPath(-50, 0, 3, 110, Math.PI/2, pathColor); createPath(60, 30, 3, 60, Math.PI/2, pathColor); createPath(-45, -50, 30, 3, 0, pathColor); createPlatform(5, 3, -15, 10, 1, 10, 0xFF6347); createPlatform(20, 2.5, 5, 8, 1, 8, 0x4682B4); createPlatform(-15, 4, 25, 7, 1, 7, 0x32CD32); createPlatform(40, 2, 40, 12, 0.5, 12, 0xDAA520); createPlatform(-45, 3.5, -30, 10, 0.8, 8, 0x8FBC8F); let currentTierX = -50; let currentTierZ = 50; let currentTierY = 2; const tierStepY = 2.5; const tierPlatformSize = 6; const tierPlatformHeight = 0.8; const numTiersSpiral = 8; for (let i = 0; i < numTiersSpiral; i++) { createPlatform(currentTierX, currentTierY, currentTierZ, tierPlatformSize, tierPlatformHeight, tierPlatformSize, 0x6A5ACD, true); currentTierY += tierStepY; if (i % 4 === 0) currentTierX += tierPlatformSize + 1; else if (i % 4 === 1) currentTierZ -= tierPlatformSize + 1; else if (i % 4 === 2) currentTierX -= tierPlatformSize + 1; else if (i % 4 === 3) currentTierZ += tierPlatformSize + 1; } createPlatform(currentTierX, currentTierY, currentTierZ, tierPlatformSize * 1.5, tierPlatformHeight, tierPlatformSize * 1.5, 0x483D8B, true); currentTierX = 65; currentTierZ = -40; currentTierY = 1.5; const numTiersLine = 6; for (let i = 0; i < numTiersLine; i++) { createPlatform(currentTierX, currentTierY, currentTierZ, tierPlatformSize + 2, tierPlatformHeight, tierPlatformSize -1, 0x778899, true); currentTierY += tierStepY + 0.5; currentTierZ += tierPlatformSize; if (i % 2 === 0) currentTierX += 2; else currentTierX -=2; } createPlatform(currentTierX, currentTierY, currentTierZ, tierPlatformSize * 2, tierPlatformHeight, tierPlatformSize, 0x2F4F4F, true); const treeCount = 80; const treeSpreadRadiusMin = 15; const treeSpreadRadiusMax = groundSize / 2 - 20; for (let i = 0; i < treeCount; i++) { const angle = Math.random() * Math.PI * 2; const radius = THREE.MathUtils.randFloat(treeSpreadRadiusMin, treeSpreadRadiusMax); let treeX = Math.cos(angle) * radius; let treeZ = Math.sin(angle) * radius; if ((Math.abs(treeX) < 5 && Math.abs(treeZ) < 30) || (Math.abs(treeZ) < 5 && Math.abs(treeX) < 30) || Math.sqrt(treeX*treeX + treeZ*treeZ) < 15) { treeX += (Math.sign(treeX) || (Math.random() > 0.5 ? 1: -1)) * THREE.MathUtils.randFloat(10, 20); treeZ += (Math.sign(treeZ) || (Math.random() > 0.5 ? 1: -1)) * THREE.MathUtils.randFloat(10, 20); } treeX = THREE.MathUtils.clamp(treeX, -groundSize/2 + 5, groundSize/2 - 5); treeZ = THREE.MathUtils.clamp(treeZ, -groundSize/2 + 5, groundSize/2 - 5); if (!((treeX > -60 && treeX < -40 && treeZ > 40 && treeZ < 60) || (treeX > 55 && treeX < 75 && treeZ > -50 && treeZ < -30 ))) { createTree(treeX, 0, treeZ, THREE.MathUtils.randFloat(0.8, 1.4)); } } createBench(15, -12, Math.PI / 2.5); createBench(-15, -12, -Math.PI / 2.5); createBench(0, 15, Math.PI); createBench(-35, -20, Math.PI/4); createBench(40, 10, -Math.PI/3); createBench(-35, 40, 0); createBench(55, 45, Math.PI * 1.2); createBench(-50, -45, -Math.PI / 5); createBench(0, 70, 0); createBench(65, 0, Math.PI/2); createBench(70, 70, Math.PI/4); createBench(-70, -60, -Math.PI/3); createFlowerBed(8, 8, 3, 1.5, 12); createFlowerBed(-8, 12, 2.5, 2.5, 15); createFlowerBed(-23, -18, 4, 2, 10); createFlowerBed(28, -15, 3, 3, 10); createFlowerBed(0, 35, 5, 1.5, 18); createFlowerBed(15, -25, 2, 2, 8); createFlowerBed(40, 50, 3, 2, 10); createFlowerBed(-50, 20, 4, 1.5, 12); createFlowerBed(-30, -55, 3, 3, 10); createFlowerBed(65, 50, 4, 2.5, 15); createFlowerBed(-65, -40, 3.5, 3.5, 12); const rockCount = 120; const rockSpreadRadiusMin = 8; const rockSpreadRadiusMax = groundSize / 2 - 10; for (let i = 0; i < rockCount; i++) { const angle = Math.random() * Math.PI * 2; const radius = THREE.MathUtils.randFloat(rockSpreadRadiusMin, rockSpreadRadiusMax); let rockX = Math.cos(angle) * radius; let rockZ = Math.sin(angle) * radius; if ((Math.abs(rockX) < 6 && Math.abs(rockZ) < 60) || (Math.abs(rockZ) < 6 && Math.abs(rockX) < 60) || Math.sqrt(rockX*rockX + rockZ*rockZ) < 20 ) { rockX += (Math.sign(rockX) || (Math.random() > 0.5 ? 1: -1)) * THREE.MathUtils.randFloat(5, 15); rockZ += (Math.sign(rockZ) || (Math.random() > 0.5 ? 1: -1)) * THREE.MathUtils.randFloat(5, 15); } rockX = THREE.MathUtils.clamp(rockX, -groundSize/2 + 3, groundSize/2 - 3); rockZ = THREE.MathUtils.clamp(rockZ, -groundSize/2 + 3, groundSize/2 - 3); if (!((rockX > -60 && rockX < -40 && rockZ > 40 && rockZ < 60) || (rockX > 55 && rockX < 75 && rockZ > -50 && rockZ < -30 ))) { createRock(rockX, rockZ, 0.5, THREE.MathUtils.randFloat(0.8, 2.5)); } } const bushCount = 200; const bushSpreadRadiusMin = 10; const bushSpreadRadiusMax = groundSize / 2 - 15; for (let i = 0; i < bushCount; i++) { const angle = Math.random() * Math.PI * 2; const radius = THREE.MathUtils.randFloat(bushSpreadRadiusMin, bushSpreadRadiusMax); let bushX = Math.cos(angle) * radius; let bushZ = Math.sin(angle) * radius; if ((Math.abs(bushX) < 7 && Math.abs(bushZ) < 50) || (Math.abs(bushZ) < 7 && Math.abs(bushX) < 50) || Math.sqrt(bushX*bushX + bushZ*bushZ) < 18) { bushX += (Math.sign(bushX) || (Math.random() > 0.5 ? 1: -1)) * THREE.MathUtils.randFloat(8, 18); bushZ += (Math.sign(bushZ) || (Math.random() > 0.5 ? 1: -1)) * THREE.MathUtils.randFloat(8, 18); } bushX = THREE.MathUtils.clamp(bushX, -groundSize/2 + 4, groundSize/2 - 4); bushZ = THREE.MathUtils.clamp(bushZ, -groundSize/2 + 4, groundSize/2 - 4); if (!((bushX > -60 && bushX < -40 && bushZ > 40 && bushZ < 60) || (bushX > 55 && bushX < 75 && bushZ > -50 && bushZ < -30 ))) { createBush(bushX, 0, bushZ, THREE.MathUtils.randFloat(1.0, 2.8)); } } }
+        const worldBounds = { minX: -120, maxX: 120, minZ: -120, maxZ: 120, }; const spawnArea = { minX: -100, maxX: 100, minZ: -100, maxZ: 100, fixedY: 1.5 };
+        function createPlayer() { const spawnX = THREE.MathUtils.randFloat(spawnArea.minX, spawnArea.maxX); const spawnZ = THREE.MathUtils.randFloat(spawnArea.minZ, spawnArea.maxZ); const spawnY = spawnArea.fixedY; player = createCharacter(playerConfig.color, playerConfig.name, null, playerConfig.hairColor); player.position.set(spawnX, spawnY, spawnZ); scene.add(player); camera.position.set(player.position.x, player.position.y + 8, player.position.z + 12); camera.lookAt(player.position); }
+        function createCharacter(bodyColor, name, id = null, hairColor = '#4A3B31') { const character = new THREE.Group(); const bodyMaterial = new THREE.MeshLambertMaterial({ color: new THREE.Color(bodyColor) }); const skinMaterial = new THREE.MeshLambertMaterial({ color: 0xFFDBAE }); const hairMaterial = new THREE.MeshLambertMaterial({ color: new THREE.Color(hairColor) }); const bodyGeo = new THREE.CylinderGeometry(0.8, 0.5, 1, 8); const body = new THREE.Mesh(bodyGeo, bodyMaterial); body.position.y = 0.9 + footOffsetYCorrection; body.castShadow = true; character.add(body); const headRadius = 0.5; const headGeo = new THREE.SphereGeometry(headRadius, 16, 12); const head = new THREE.Mesh(headGeo, skinMaterial); head.position.y = (body.position.y + bodyGeo.parameters.height / 2) + headRadius; head.castShadow = true; character.add(head); const eyeGeo = new THREE.SphereGeometry(0.08, 8, 8); const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 }); const leftEye = new THREE.Mesh(eyeGeo, eyeMaterial); leftEye.position.set(-0.15, 0.1, 0.45); head.add(leftEye); const rightEye = new THREE.Mesh(eyeGeo, eyeMaterial); rightEye.position.set(0.15, 0.1, 0.45); head.add(rightEye); const mouthGeometry = new THREE.PlaneGeometry(0.25, 0.1); const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x660000, side: THREE.DoubleSide }); const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial); mouth.position.set(0, -0.15, 0.46); head.add(mouth); const hairGeo = new THREE.SphereGeometry(headRadius * 1.05, 16, 12, 0, Math.PI * 2, Math.PI * 0, Math.PI * 0.5); const hairMesh = new THREE.Mesh(hairGeo, hairMaterial); hairMesh.position.y = 0.15; hairMesh.castShadow = true; head.add(hairMesh); const armLength = 1.2; const armRadius = 0.15; const armGeo = new THREE.CylinderGeometry(armRadius, armRadius, armLength, 6); const shoulderOffsetYFromBodyTop = -0.1; const shoulderYPos = (body.position.y + bodyGeo.parameters.height / 2) + shoulderOffsetYFromBodyTop; const leftShoulder = new THREE.Group(); leftShoulder.position.set(-0.7, shoulderYPos, 0); character.add(leftShoulder); const leftArmMesh = new THREE.Mesh(armGeo, skinMaterial); leftArmMesh.position.y = -armLength / 2; leftArmMesh.castShadow = true; leftShoulder.add(leftArmMesh); const rightShoulder = new THREE.Group(); rightShoulder.position.set(0.7, shoulderYPos, 0); character.add(rightShoulder); const rightArmMesh = new THREE.Mesh(armGeo, skinMaterial); rightArmMesh.position.y = -armLength / 2; rightArmMesh.castShadow = true; rightShoulder.add(rightArmMesh); const legHeight = 1.2; const legGeo = new THREE.CylinderGeometry(0.2, 0.2, legHeight, 6); const legMaterial = new THREE.MeshLambertMaterial({ color: 0x333377 }); const leftHip = new THREE.Group(); leftHip.position.set(-0.3, -(bodyGeo.parameters.height / 2), 0); body.add(leftHip); const leftLegMesh = new THREE.Mesh(legGeo, legMaterial); leftLegMesh.position.y = -legHeight / 2; leftLegMesh.castShadow = true; leftHip.add(leftLegMesh); const rightHip = new THREE.Group(); rightHip.position.set(0.3, -(bodyGeo.parameters.height / 2), 0); body.add(rightHip); const rightLegMesh = new THREE.Mesh(legGeo, legMaterial); rightLegMesh.position.y = -legHeight / 2; rightLegMesh.castShadow = true; rightHip.add(rightLegMesh); const crotchGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4); const crotchMaterial = new THREE.MeshLambertMaterial({ color: 0x333377 }); const crotch = new THREE.Mesh(crotchGeo, crotchMaterial); crotch.position.set(0, -(bodyGeo.parameters.height / 2 + 0.1), 0); crotch.castShadow = true; body.add(crotch); character.userData.parts = { body, head, leftShoulder, rightShoulder, leftArm: leftArmMesh, rightArm: rightArmMesh, leftLeg: leftHip, rightLeg: rightHip, hair: hairMesh }; character.userData.walkCycle = 0; character.userData.idleCycle = 0; character.userData.jumpStartTime = 0; if (name) { const canvas = document.createElement('canvas'); const context = canvas.getContext('2d'); const font = 'bold 18px Sarabun, Arial'; context.font = font; const textMetrics = context.measureText(name); const textWidth = textMetrics.width; canvas.width = textWidth + 16; canvas.height = 26; context.font = font; context.fillStyle = 'rgba(0,0,0,0.6)'; context.fillRect(0, 0, canvas.width, canvas.height); context.fillStyle = 'white'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(name, canvas.width / 2, canvas.height / 2 + 1); const nameTexture = new THREE.CanvasTexture(canvas); const nameMaterial = new THREE.SpriteMaterial({ map: nameTexture, depthTest: false, transparent: true }); const nameSprite = new THREE.Sprite(nameMaterial); let nameTagBaseY = head.position.y + headRadius; if (hairMesh) { nameTagBaseY = head.position.y + hairMesh.position.y + (headRadius * 0.4); } nameSprite.position.y = nameTagBaseY + 0.6; nameSprite.scale.set(canvas.width / 60, canvas.height / 60, 1.0); character.add(nameSprite); } character.userData.id = id; character.userData.name = name; character.userData.bodyColor = bodyColor; character.userData.hairColor = hairColor; character.userData.velocity = new THREE.Vector3(); character.userData.onGround = true; character.userData.animationState = 'idle'; character.userData.isCollidable = true; character.userData.type = 'player'; return character; }
+        function createNPCsFromServerData() { npcs.forEach(npcObj => scene.remove(npcObj)); npcs = []; serverNpcDataStore.forEach(data => { const npc = createCharacter(data.color, data.name, data.id, data.hairColor || '#333333'); npc.position.set(data.position.x, data.position.y, data.position.z); npc.userData.type = 'npc'; npc.userData.id = data.id; npc.userData.isCollidable = true; npc.userData.originalRotationY = npc.rotation.y; scene.add(npc); npcs.push(npc); }); }
+        function setupControls() { document.addEventListener('keydown', (e) => { if (document.activeElement === document.getElementById('chatInput')) return; keys[e.code] = true; if (e.code === 'KeyT') { e.preventDefault(); toggleChatInput(); } }); document.addEventListener('keyup', (e) => { keys[e.code] = false; }); if (isMobile) setupMobileControls(); document.getElementById('chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); }); document.getElementById('npcCloseBtn').addEventListener('click', closeNPCDialog); window.addEventListener('resize', onWindowResize); const chatToggleBtn = document.getElementById('chatToggleBtn'); if (chatToggleBtn) { chatToggleBtn.addEventListener('click', () => { const chatInput = document.getElementById('chatInput'); const isShown = chatInput.style.display === 'block'; chatInput.style.display = isShown ? 'none' : 'block'; if (!isShown) { chatInput.focus(); setTimeout(() => { chatInput.scrollIntoView({ block: 'end' }); }, 100); } else { window.scrollTo({ top: 0, behavior: 'instant' }); } }); } document.getElementById('speakToNpcBtn').addEventListener('click', () => { if (!speechRecognition) { addChatMessage('System', 'Speech recognition is not available on this browser.'); return; } if (isRecognizing) { speechRecognition.stop(); } else { navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => { stream.getTracks().forEach(track => track.stop()); if (speechRecognition.lang !== 'en-US') speechRecognition.lang = 'en-US'; speechRecognition.start(); }).catch(err => { console.error('Microphone access denied:', err); addChatMessage('System', 'Could not access microphone. Please check permissions.'); document.getElementById('speakToNpcBtn').textContent = '🎤 Speak'; document.getElementById('speakToNpcBtn').disabled = false; isRecognizing = false; }); } }); }
+        function setupMobileControls() { const joystick = document.getElementById('joystick'); const joystickKnob = document.getElementById('joystickKnob'); const jumpBtn = document.getElementById('jumpBtn'); let joystickTouchId = null; joystick.addEventListener('touchstart', (e) => { e.preventDefault(); if (joystickTouchId === null) { joystickTouchId = e.changedTouches[0].identifier; joystickActive = true; updateJoystick(e.changedTouches[0]); } }, { passive: false }); document.addEventListener('touchmove', (e) => { if (joystickActive) { for (let i = 0; i < e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joystickTouchId) { e.preventDefault(); updateJoystick(e.changedTouches[i]); break; } } } }, { passive: false }); document.addEventListener('touchend', (e) => { if (joystickActive) { for (let i = 0; i < e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joystickTouchId) { joystickActive = false; joystickTouchId = null; resetJoystick(); break; } } } }); joystick.addEventListener('mousedown', (e) => { e.preventDefault(); joystickActive = true; updateJoystick(e); }); document.addEventListener('mousemove', (e) => { if (joystickActive && e.buttons === 1) { e.preventDefault(); updateJoystick(e); } else if (joystickActive && e.buttons !==1) { joystickActive = false; resetJoystick(); } }); document.addEventListener('mouseup', (e) => { if (joystickActive) { joystickActive = false; resetJoystick(); } }); function updateJoystick(touchOrMouseEvent) { const rect = joystick.getBoundingClientRect(); const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2; const deltaX = touchOrMouseEvent.clientX - centerX; const deltaY = touchOrMouseEvent.clientY - centerY; const maxDist = rect.width / 2 - joystickKnob.offsetWidth / 2; const distance = Math.min(Math.sqrt(deltaX * deltaX + deltaY * deltaY), maxDist); const angle = Math.atan2(deltaY, deltaX); const knobX = Math.cos(angle) * distance; const knobY = Math.sin(angle) * distance; joystickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`; joystickDirection.x = distance > 5 ? knobX / maxDist : 0; joystickDirection.y = distance > 5 ? knobY / maxDist : 0; } function resetJoystick() { joystickKnob.style.transform = 'translate(-50%, -50%)'; joystickDirection.x = 0; joystickDirection.y = 0; } jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); tryJump(); }, { passive: false }); jumpBtn.addEventListener('click', tryJump); }
+        function setupUI() { }
+        function handleLocalPlayerMovement(delta) { if (!player || !localPlayerId || !socket || socket.readyState !== WebSocket.OPEN) return; const moveSpeed = 12; const rotationSpeed = Math.PI * 1.2; let actualMoveSpeed = moveSpeed * delta; let actualRotationSpeed = rotationSpeed * delta; let moveVector = new THREE.Vector3(); let isMovingInput = false; if (keys['KeyW'] || keys['ArrowUp']) { moveVector.z += 1; isMovingInput = true; } if (keys['KeyS'] || keys['ArrowDown']) { moveVector.z -= 1; isMovingInput = true; } if (isMobile && joystickActive) { if (Math.abs(joystickDirection.y) > 0.1) { moveVector.z += -joystickDirection.y; isMovingInput = true; } if (Math.abs(joystickDirection.x) > 0.1) { player.rotation.y -= joystickDirection.x * actualRotationSpeed * 1.2; } } if (keys['KeyA'] || keys['ArrowLeft']) { player.rotation.y += actualRotationSpeed; } if (keys['KeyD'] || keys['ArrowRight']) { player.rotation.y -= actualRotationSpeed; } if (keys['Space'] && !isJumpingState) { tryJump(); } if (!keys['Space'] && isJumpingState) { isJumpingState = false; } const head = player.userData?.parts?.head; if (head) { const isReversing = keys['KeyS'] || keys['ArrowDown'] || (isMobile && joystickDirection.y > 0.3); head.rotation.y = isReversing ? Math.PI : 0; } let targetPosition = player.position.clone(); if (moveVector.lengthSq() > 0) { moveVector.normalize().multiplyScalar(actualMoveSpeed); moveVector.applyQuaternion(player.quaternion); targetPosition.add(moveVector); currentAnimation = 'walking'; } else { currentAnimation = 'idle'; } targetPosition.x = THREE.MathUtils.clamp(targetPosition.x, worldBounds.minX, worldBounds.maxX); targetPosition.z = THREE.MathUtils.clamp(targetPosition.z, worldBounds.minZ, worldBounds.maxZ); const collisionResult = checkCollision(player, targetPosition); if (!collisionResult.collidedX) player.position.x = targetPosition.x; if (!collisionResult.collidedZ) player.position.z = targetPosition.z; handleLocalPlayerPhysics(delta); if (player.userData.onGround && currentAnimation === 'jumping') { currentAnimation = 'idle'; } animateCharacter(player, currentAnimation, delta); updateCamera(); updatePositionUI(); checkNPCInteraction(); const now = Date.now(); if (now - lastUpdateTime > updateInterval) { socket.send(JSON.stringify({ type: 'playerMove', payload: { position: player.position, rotation: { x: player.rotation.x, y: player.rotation.y, z: player.rotation.z }, animationState: currentAnimation }})); lastUpdateTime = now; } }
+        function tryJump() { if (player && player.userData.onGround) { player.userData.velocity.y = 15; player.userData.onGround = false; currentAnimation = 'jumping'; isJumpingState = true; if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'playerAction', payload: { action: 'jump' } })); } } } function getStandableSurfacesRecursive(object, playerWorldPos, playerVelocityY, proposedPlayerY, surfaces) { const playerRadius = 0.5; if (object.userData && object.userData.isStandable && object.userData.topY !== undefined) { const objBox = new THREE.Box3().setFromObject(object); let worldSurfaceY = object.userData.topY; if (playerWorldPos.x + playerRadius > objBox.min.x && playerWorldPos.x - playerRadius < objBox.max.x && playerWorldPos.z + playerRadius > objBox.min.z && playerWorldPos.z - playerRadius < objBox.max.z) { if (playerVelocityY <= 0 && playerWorldPos.y >= (worldSurfaceY - 0.2) && proposedPlayerY <= (worldSurfaceY + 0.05)) { surfaces.push(worldSurfaceY); } } } if (object.children && object.children.length > 0) { for (const child of object.children) { getStandableSurfacesRecursive(child, playerWorldPos, playerVelocityY, proposedPlayerY, surfaces); } } }
+        function handleLocalPlayerPhysics(delta) { if (!player) return; const gravity = 22; const mainGroundY = 0; player.userData.velocity.y -= gravity * delta; let proposedY = player.position.y + player.userData.velocity.y * delta; let newOnGround = false; let currentStandSurfaceY = mainGroundY; let potentialSurfaces = []; const objectsToScan = [...world.children, ...Object.values(players)]; for (const topLevelObject of objectsToScan) { getStandableSurfacesRecursive(topLevelObject, player.position, player.userData.velocity.y, proposedY, potentialSurfaces); } potentialSurfaces.forEach(surfaceY => { currentStandSurfaceY = Math.max(currentStandSurfaceY, surfaceY); }); if (proposedY <= currentStandSurfaceY) { player.position.y = currentStandSurfaceY; player.userData.velocity.y = 0; newOnGround = true; } else { player.position.y = proposedY; newOnGround = false; } player.userData.onGround = newOnGround; }
+        function collectCollidersRecursive(object, movingPlayer, collidersList) { if (object === movingPlayer) return; if (object.userData && (object.userData.isCollidable || object.userData.type === 'player' || object.userData.type === 'npc')) { if (object.isMesh || (object.isGroup && object.userData.isCollidable)) { collidersList.push(object); } } if (object.children && object.children.length > 0) { for (const child of object.children) { collectCollidersRecursive(child, movingPlayer, collidersList); } } }
+        function checkCollision(movingPlayer, targetPosition) { const playerBoundingRadius = 0.5; const playerHeight = 2.8; let collisionResult = { collidedX: false, collidedZ: false }; if (!movingPlayer.userData) return collisionResult; let allColliders = []; const objectsToScan = [...world.children, ...Object.values(players), ...npcs]; for (const topLevelObject of objectsToScan) { collectCollidersRecursive(topLevelObject, movingPlayer, allColliders); } allColliders = [...new Set(allColliders)]; for (const staticObject of allColliders) { const objectBox = new THREE.Box3().setFromObject(staticObject); if (objectBox.max.y - objectBox.min.y < 0.1) objectBox.max.y += 0.1; const playerFeetY = targetPosition.y; const playerTopY = targetPosition.y + playerHeight; const playerBoxAtTarget = new THREE.Box3( new THREE.Vector3(targetPosition.x - playerBoundingRadius, playerFeetY, targetPosition.z - playerBoundingRadius), new THREE.Vector3(targetPosition.x + playerBoundingRadius, playerTopY, targetPosition.z + playerBoundingRadius) ); if (playerBoxAtTarget.intersectsBox(objectBox)) { const playerBoxTryX = new THREE.Box3( new THREE.Vector3(targetPosition.x - playerBoundingRadius, movingPlayer.position.y, movingPlayer.position.z - playerBoundingRadius), new THREE.Vector3(targetPosition.x + playerBoundingRadius, movingPlayer.position.y + playerHeight, movingPlayer.position.z + playerBoundingRadius) ); if(playerBoxTryX.intersectsBox(objectBox)) { if (!(staticObject.userData.isStandable && staticObject.userData.topY !== undefined && movingPlayer.position.y >= staticObject.userData.topY - 0.1)) { collisionResult.collidedX = true; } } const playerBoxTryZ = new THREE.Box3( new THREE.Vector3(movingPlayer.position.x - playerBoundingRadius, movingPlayer.position.y, targetPosition.z - playerBoundingRadius), new THREE.Vector3(movingPlayer.position.x + playerBoundingRadius, movingPlayer.position.y + playerHeight, targetPosition.z + playerBoundingRadius) ); if(playerBoxTryZ.intersectsBox(objectBox)) { if (!(staticObject.userData.isStandable && staticObject.userData.topY !== undefined && movingPlayer.position.y >= staticObject.userData.topY - 0.1)) { collisionResult.collidedZ = true; } } if(collisionResult.collidedX && collisionResult.collidedZ) return collisionResult; } } return collisionResult; }
+        function animateCharacter(character, animationState, delta) { if (!character || !character.userData.parts) return; const parts = character.userData.parts; const targetDelta = Math.min(delta, 0.05); character.userData.walkCycle += targetDelta * 12; character.userData.idleCycle += targetDelta * 1.5; const armSwingRange = Math.PI / 3.5; const legSwingRange = Math.PI / 4.5; const leftArmPivot = parts.leftShoulder; const rightArmPivot = parts.rightShoulder; const leftLeg = parts.leftLeg; const rightLeg = parts.rightLeg; if (character.userData.jumpStartTime > 0) { const timeSinceJump = (Date.now() - character.userData.jumpStartTime) / 1000; const jumpDuration = 0.8; const jumpProgress = Math.min(1, timeSinceJump / jumpDuration); if (leftArmPivot) leftArmPivot.rotation.x = -armSwingRange * 0.7; if (rightArmPivot) rightArmPivot.rotation.x = -armSwingRange * 0.7; if (leftLeg) leftLeg.rotation.x = legSwingRange * 0.4; if (rightLeg) rightLeg.rotation.x = -legSwingRange * 0.4; if (jumpProgress >= 1) { character.userData.jumpStartTime = 0; } return; } if (animationState === 'walking') { if (leftArmPivot) leftArmPivot.rotation.x = Math.sin(character.userData.walkCycle) * armSwingRange; if (rightArmPivot) rightArmPivot.rotation.x = -Math.sin(character.userData.walkCycle) * armSwingRange; if (leftLeg) leftLeg.rotation.x = -Math.sin(character.userData.walkCycle) * legSwingRange; if (rightLeg) rightLeg.rotation.x = Math.sin(character.userData.walkCycle) * legSwingRange; } else if (animationState === 'jumping') { if (leftArmPivot) leftArmPivot.rotation.x = -armSwingRange * 0.8; if (rightArmPivot) rightArmPivot.rotation.x = -armSwingRange * 0.8; if (leftLeg) leftLeg.rotation.x = legSwingRange * 0.3; if (rightLeg) rightLeg.rotation.x = -legSwingRange * 0.3; } else { if (leftArmPivot) leftArmPivot.rotation.x = THREE.MathUtils.lerp(leftArmPivot.rotation.x, Math.sin(character.userData.idleCycle * 0.8) * 0.2, 0.1); if (rightArmPivot) rightArmPivot.rotation.x = THREE.MathUtils.lerp(rightArmPivot.rotation.x, Math.sin(character.userData.idleCycle * 0.8) * 0.2, 0.1); if (leftLeg) leftLeg.rotation.x = THREE.MathUtils.lerp(leftLeg.rotation.x, 0, 0.1); if (rightLeg) rightLeg.rotation.x = THREE.MathUtils.lerp(rightLeg.rotation.x, 0, 0.1); parts.body.position.y = THREE.MathUtils.lerp(parts.body.position.y, (0.9 + footOffsetYCorrection) + Math.sin(character.userData.idleCycle * 0.5) * 0.04, 0.1); } }
+        function updateCamera() { if (!player) return; const cameraDistance = 7; const cameraHeight = 3.5; const offset = new THREE.Vector3(0, cameraHeight, -cameraDistance); const worldOffset = offset.clone().applyQuaternion(player.quaternion); const cameraTargetPosition = player.position.clone().add(worldOffset); camera.position.lerp(cameraTargetPosition, 0.15); const lookAtTarget = player.position.clone().add(new THREE.Vector3(0, 1.6, 0)); camera.lookAt(lookAtTarget); }
+        function checkNPCInteraction() { if (!player || !localPlayerId || !socket || socket.readyState !== WebSocket.OPEN) return; const now = Date.now(); npcs.forEach(npcObj => { const distance = player.position.distanceTo(npcObj.position); if (distance < 4.5) { const directionToPlayer = player.position.clone().sub(npcObj.position).normalize(); const targetAngle = Math.atan2(directionToPlayer.x, directionToPlayer.z); if (npcObj.userData.originalRotationY === undefined) { npcObj.userData.originalRotationY = npcObj.rotation.y; } npcObj.quaternion.slerp(new THREE.Quaternion().setFromEuler(new THREE.Euler(0,targetAngle,0)), 0.15); if (distance < 2.8 && (now - lastNPCInteractionTime > NPC_INTERACTION_COOLDOWN_MS)) { if (currentOpenNPCDialogId !== npcObj.userData.id || document.getElementById('npcDialog').style.display === 'none') { socket.send(JSON.stringify({ type: 'npcInteract', payload: { npcId: npcObj.userData.id } })); lastNPCInteractionTime = now; } } } else { if (npcObj.userData.originalRotationY !== undefined && Math.abs(npcObj.rotation.y - npcObj.userData.originalRotationY) > 0.02) { npcObj.quaternion.slerp(new THREE.Quaternion().setFromEuler(new THREE.Euler(0,npcObj.userData.originalRotationY,0)), 0.08); } if (currentOpenNPCDialogId === npcObj.userData.id) { closeNPCDialog(); } } }); }
+
+        function showNPCDialogContent(npcId, npcName, dialogue, npcVoiceGender) {
+    currentOpenNPCDialogId = npcId;
+    const dialogUI = document.getElementById('npcDialog');
+    document.getElementById('npcNameText').textContent = npcName + ":";
+    document.getElementById('npcDialogueText').textContent = dialogue;
+    dialogUI.style.display = 'block';
+    dialogUI.style.left = '50%';
+    dialogUI.style.top = '15%';
+    dialogUI.style.transform = 'translateX(-50%)';
+
+    const speakBtn = document.getElementById('speakToNpcBtn');
+    if (speechRecognition && speechSynthesis) {
+        speakBtn.style.display = 'inline-block';
+        speakBtn.disabled = false;
+        speakBtn.textContent = '🎤 Speak';
+    } else {
+        speakBtn.style.display = 'none';
+    }
+
+    if (npcVoiceEnabled && speechSynthesis && dialogue) {
+        speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(dialogue);
+        utterance.lang = 'en-US';
+
+        const npcIdHash = simpleHashCode(npcId);
+        let voiceToUse = null;
+
+        if (npcVoiceGender === 'female' && preferredFemaleEnglishVoices.length > 0) {
+            const voiceIndex = npcIdHash % preferredFemaleEnglishVoices.length;
+            voiceToUse = preferredFemaleEnglishVoices[voiceIndex];
+        } else if (npcVoiceGender === 'male' && preferredMaleEnglishVoices.length > 0) {
+            const voiceIndex = npcIdHash % preferredMaleEnglishVoices.length;
+            voiceToUse = preferredMaleEnglishVoices[voiceIndex];
+        }
+
+        if (!voiceToUse) {
+            if (otherEnglishVoices.length > 0) {
+                const voiceIndex = npcIdHash % otherEnglishVoices.length;
+                voiceToUse = otherEnglishVoices[voiceIndex];
+            } else if (englishVoices.length > 0) {
+                const voiceIndex = npcIdHash % englishVoices.length;
+                voiceToUse = englishVoices[voiceIndex];
+            }
+        }
+        
+        if (voiceToUse) {
+            utterance.voice = voiceToUse;
+            console.log(`NPC ${npcName} (Gender: ${npcVoiceGender || 'N/A'}) speaking with consistent voice: ${voiceToUse.name}`);
+        } else {
+            console.log(`NPC ${npcName} speaking with default English voice (no specific voice found).`);
+        }
+
+        speechSynthesis.speak(utterance);
+    }
+}
+
+        function closeNPCDialog() { document.getElementById('npcDialog').style.display = 'none'; const speakBtn = document.getElementById('speakToNpcBtn'); if(speakBtn) speakBtn.style.display = 'none'; currentOpenNPCDialogId = null; lastNpcDialogueText = ''; if (speechRecognition && isRecognizing) { speechRecognition.stop(); isRecognizing = false; } if (speechSynthesis) { speechSynthesis.cancel(); } }
+        function addOtherPlayer(pData) { if (players[pData.id] || !pData.id || (localPlayerId && pData.id === localPlayerId)) return; const otherPlayer = createCharacter(pData.color, pData.name, pData.id, pData.hairColor || '#4A3B31'); otherPlayer.position.set(pData.position.x, pData.position.y, pData.position.z); if(pData.rotation) otherPlayer.rotation.y = pData.rotation.y; otherPlayer.userData.targetPosition = otherPlayer.position.clone(); otherPlayer.userData.targetRotationY = otherPlayer.rotation.y; otherPlayer.userData.animationState = pData.animationState || 'idle'; scene.add(otherPlayer); players[pData.id] = otherPlayer; }
+        function removeOtherPlayer(id) { if (players[id]) { const obj = players[id]; scene.remove(obj); obj.traverse(child => { if (child.isMesh) { child.geometry.dispose(); if (child.material.isMaterial) child.material.dispose(); else if (Array.isArray(child.material)) child.material.forEach(m => m.dispose()); if(child.material.map) child.material.map.dispose(); } }); delete players[id]; } }
+        function updatePositionUI() { if (player) { const pos = player.position; document.getElementById('position').textContent = `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`; } }
+        function toggleChatInput() { const chatInput = document.getElementById('chatInput'); if (chatInput.style.display === 'none' || chatInput.style.display === '') { chatInput.style.display = 'block'; chatInput.focus(); } else { chatInput.style.display = 'none'; } }
+        function sendMessage() { const chatInput = document.getElementById('chatInput'); const message = chatInput.value.trim(); if (message && socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'chatMessage', payload: { message: message }})); chatInput.value = ''; } if (isMobile) { chatInput.blur(); window.scrollTo({ top: 0, behavior: 'instant' }); } }
+        function addChatMessage(senderName, messageText) { const chatBox = document.getElementById('chatBox'); const messageElement = document.createElement('div'); messageElement.style.marginBottom = '4px'; const nameSpan = document.createElement('strong'); nameSpan.textContent = senderName + ": "; nameSpan.style.color = senderName === playerConfig.name ? '#82E0AA' : (senderName === 'System' ? '#f39c12' : '#AED6F1'); messageElement.appendChild(nameSpan); messageElement.appendChild(document.createTextNode(messageText)); chatBox.appendChild(messageElement); chatBox.scrollTop = chatBox.scrollHeight; }
+        function onWindowResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+        function animate() { requestAnimationFrame(animate); const delta = clock.getDelta(); if (player && localPlayerId && socket && socket.readyState === WebSocket.OPEN) { handleLocalPlayerMovement(delta); } for (const id in players) { const p = players[id]; if (p.userData.targetPosition) { p.position.lerp(p.userData.targetPosition, 0.15); } if (typeof p.userData.targetRotationY === 'number') { p.rotation.y = THREE.MathUtils.lerp(p.rotation.y, p.userData.targetRotationY, 0.15); } animateCharacter(p, p.userData.animationState || 'idle', delta); } if (renderer && scene && camera) renderer.render(scene, camera); }
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
